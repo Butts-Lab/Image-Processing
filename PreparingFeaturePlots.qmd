@@ -1,0 +1,108 @@
+---
+title: "FeaturePlot_ImageProcessing"
+author: "Madison McLaren"
+format: html
+editor: visual
+---
+
+# Feature Plots for Image Processing
+
+The following code is used to generate gene expression plots using the FeaturePlot function of Seurat. These plots will then be exported as JPEG images and used to make calculations in a separate MATLAB script.
+
+### Load in Necessary Libraries and Dataset
+
+```{r loading_libraries, echo = FALSE, message = FALSE}
+library(Seurat)
+library(tidyverse)
+library(scales)
+```
+
+```{r loading_dataset}
+load("C:/Users/mclrm/OneDrive/Documents/R/ButtsLab/Prog_and_Intermediate_subset.Rdata")
+```
+
+```{r updating_dataset, echo = FALSE, message = FALSE}
+ProInt_subsetupdated = UpdateSeuratObject(object = Prog_and_Intermediate_subset)
+```
+
+### Running Dimensionality Reduction
+
+```{r dim_red, echo = FALSE, message = FALSE}
+VarFeats <- FindVariableFeatures(ProInt_subsetupdated, selection.method = "vst", nfeatures = 2000, verbose = FALSE)
+
+# Scale data based on variable features
+all.genes <- rownames(VarFeats)
+Scaled <- ScaleData(VarFeats, features = all.genes, verbose = FALSE)
+
+# Perform principal component analysis
+PCA <- RunPCA(Scaled, features = VariableFeatures(object = Scaled), verbose = FALSE)
+
+# Find neighboring cells
+Neighbors <- FindNeighbors(PCA, dims = 1:10)
+
+# Generate Clusters
+Clusters <- FindClusters(Neighbors, resolution = 0.5)
+
+# Visualize clusters by time point
+UMAP <- RunUMAP(Clusters, dims = 1:10, verbose = F)
+```
+
+### Generate Feature Plots
+
+```{r create_featureplot, echo = FALSE}
+# Input the names of the genes you are interested in coexpressing here
+Genes <- c("Clec2l","Car4")
+
+# Generate Feature Plots
+Gene1_Exp <- FeaturePlot(UMAP, features = Genes[1], pt.size=0.1) + xlim(-10,15) + ylim(-10,10) + theme(legend.position = "none")
+Gene2_Exp <- FeaturePlot(UMAP, features = Genes[2], pt.size=0.1) + xlim(-10,15) + ylim(-10,10) + theme(legend.position = "none")
+```
+
+```{r create_UMAP_clusters}
+UMAP_Clusters = DimPlot(object = UMAP, reduction = "umap", pt.size=0.1) + 
+        xlim(-10,15) + ylim(-10,10) + 
+        theme(legend.position = "none")
+show_col(hue_pal()(17))
+```
+
+```{r specify_cluster, echo = FALSE, message = FALSE}
+# Extract UMAP coordinates from the UMAP object
+umap_coords <- as.data.frame(UMAP@reductions$umap@cell.embeddings)
+
+# Add cluster information to the data frame
+umap_coords$Cluster <- as.factor(Clusters$seurat_clusters)
+
+# Highlighted cluster
+highlighted_cluster <- 0  # Change this to the cluster you want to highlight
+
+# Create UMAP plot using ggplot2
+UMAP_highlight <- ggplot(umap_coords, aes(x = umap_coords[, 1], y = umap_coords[, 2])) +
+        geom_point(aes(color = ifelse(Cluster == highlighted_cluster, "Highlighted", "Other")), 
+                   size = 0.1) +
+        scale_color_manual(values = c("red", "grey"), 
+                           name = "Clusters", 
+                           labels = c("Other Clusters", paste("Cluster", highlighted_cluster))) +
+        xlim(-10,15) + ylim(-10,10) + 
+        theme(legend.position = "none")
+        theme_minimal()
+        
+UMAP_highlight
+```
+
+### Save FeaturePlots to Folder
+
+Please note that the naming of these files should be named as: File1 = Gene1_Exp File2 = Gene2_Exp Where Gene1 and Gene2 are substituted for your two genes of interest. Files will be saved to your current directory.
+
+**Please do not change anything about the file saving format**
+
+```{r saving_files}
+# Create file names
+gene1_filename <- paste(Genes[1], "_Exp.jpeg", sep = "")
+gene2_filename <- paste(Genes[2], "_Exp.jpeg", sep = "")
+cluster_filename <- paste(highlighted_cluster, "_Exp.jpeg", sep = "")
+
+# Save to file directory as jpeg images
+ggsave(gene1_filename, plot = Gene1_Exp, device = "jpeg", width = 1494, height = 708, units = "px", dpi = 96)
+ggsave(gene2_filename, plot = Gene2_Exp, device = "jpeg", width = 1494, height = 708, units = "px", dpi = 96)
+ggsave(cluster_filename, plot = UMAP_highlight, device = "jpeg", width = 1494, height = 708, units = "px", dpi = 96)
+```
