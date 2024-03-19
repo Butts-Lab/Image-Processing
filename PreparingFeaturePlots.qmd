@@ -9,6 +9,8 @@ editor: visual
 
 The following code is used to generate gene expression plots using the FeaturePlot function of Seurat. These plots will then be exported as JPEG images and used to make calculations in a separate MATLAB script.
 
+edit
+
 ### Load in Necessary Libraries and Dataset
 
 ```{r loading_libraries, echo = FALSE, message = FALSE}
