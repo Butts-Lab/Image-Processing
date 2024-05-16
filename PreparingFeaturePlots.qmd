@@ -60,11 +60,50 @@ Gene1_Exp <- FeaturePlot(UMAP, features = Genes[1], pt.size=0.1) + xlim(-10,15) 
 Gene2_Exp <- FeaturePlot(UMAP, features = Genes[2], pt.size=0.1) + xlim(-10,15) + ylim(-10,10) + theme(legend.position = "none")
 ```
 
-```{r create_UMAP_clusters}
-UMAP_Clusters = DimPlot(object = UMAP, reduction = "umap", pt.size=0.1) + 
+```{r generate_genelist}
+filter_gene_names <- function(object, str_match_list) {
+        gene_names <- Features(object)
+        genes <- c()
+        for(i in str_match_list){
+                gene_matches <- grep(i, gene_names, value = TRUE)
+                genes <- c(genes, gene_matches)
+        }
+        return(genes)
+}
+
+keygenes <- c("Atoh1", "WPRE", "Mki67", "Sox2", "Nhlh2", "Mapt", "Nes", "Pax6")
+moregenes <- filter_gene_names(UMAP, c("Notch", "Dll", "Jag", "Hes", "Nrarp", "Wnt"))
+
+genes <- c(keygenes, moregenes)
+```
+
+```{r create_FeaturePlots}
+create_FP <- function(object, genes){
+        Plots <- list()
+        for(i in genes){
+                Plots[[i]] <- FeaturePlot(object, features = genes[1], 
+                                          pt.size=0.1) +
+                        xlim(-10,15) + ylim(-10,10) + 
+                        theme(legend.position = "none")
+        }
+        return(Plots)
+}
+
+Plots <- create_FP(UMAP, genes)
+```
+
+```{r create_UMAP_annotations}
+UMAP_Clusters <- DimPlot(object = UMAP, reduction = "umap", pt.size=0.1) + 
         xlim(-10,15) + ylim(-10,10) + 
         theme(legend.position = "none")
-show_col(hue_pal()(17))
+
+UMAP_Celltype <- DimPlot(object = UMAP, reduction = "umap", pt.size=0.1, 
+        group.by = "celltype") + 
+        xlim(-10,15) + ylim(-10,10) + 
+        theme(legend.position = "none")
+
+Plots <- append(Plots, UMAP_Clusters)
+Plots <- append(Plots, UMAP_Celltype)
 ```
 
 ```{r specify_cluster, echo = FALSE, message = FALSE}
@@ -107,4 +146,18 @@ cluster_filename <- paste(highlighted_cluster, "_Exp.jpeg", sep = "")
 ggsave(gene1_filename, plot = Gene1_Exp, device = "jpeg", width = 1494, height = 708, units = "px", dpi = 96)
 ggsave(gene2_filename, plot = Gene2_Exp, device = "jpeg", width = 1494, height = 708, units = "px", dpi = 96)
 ggsave(cluster_filename, plot = UMAP_highlight, device = "jpeg", width = 1494, height = 708, units = "px", dpi = 96)
+```
+
+```{r save_files_func}
+filesave <- function(Genes, Plots){
+        for(i in Genes){
+                filename <- paste(Genes[i], "_Exp.jpeg", sep = "",
+                                  path = "FeaturePlots")
+                ggsave(filename, plot = Plots[[i]], 
+                       device = "jpeg", width = 1494, height = 708,
+                       units = "px", dpi = 96)
+        }
+}
+
+filesave(genes, Plots)
 ```
